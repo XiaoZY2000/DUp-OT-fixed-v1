@@ -1,0 +1,106 @@
+# ============================================================
+# DUP-OT Configuration
+# ============================================================
+
+# --- Global ---
+seeds: [7, 11, 17, 33, 2025]
+device: "auto"                    # "auto" | "cuda" | "cpu"
+
+# --- Task mode ---
+mode: "rating"                    # "rating" | "ranking"
+
+# --- Dataset paths ---
+dataset_root: "data"
+source_domain: "CDs_and_Vinyl"
+target_domain: "Kindle_Store"
+
+# --- Data filtering (k-core) ---
+filter:
+  user_col: "user_id"
+  item_col: "parent_asin"
+  rating_col: "rating"
+  review_col: "text"
+  time_col: "timestamp"
+  k_user: 5
+  k_item: 5
+  n_rows: null                    # null = read all; int = quick test
+
+# --- Raw → interaction JSON ---
+gen_data:
+  user_col: "user_id"
+  item_col: "parent_asin"
+  rating_col: "rating"
+  review_col: "text"
+  time_col: "timestamp"
+
+# --- Time split ---
+split:
+  by_user: false
+  target_ratios: [0.8, 0.1, 0.1]   # train / val / test
+
+# --- Source-target feasibility ---
+feasibility:
+  source_grid_step: 0.05           # search grid step for keep_ratio
+
+# --- Review encoder ---
+review_encoder:
+  model_name: "sentence-transformers/all-MiniLM-L6-v2"
+  sent_batch: 64
+  time_pooling: true                # exponential time-weighted pooling
+
+# --- Time decay ---
+time_decay:
+  half_life_months: 6.0             # lambda = ln(2) / half_life
+  max_delta_months: 36.0            # clamp delta at this many months
+
+# --- AutoEncoder (dimension reduction) ---
+autoencoder:
+  feature_dim: 384                  # input dim (MiniLM output)
+  hidden_dim: 256
+  target_dim: 128                   # bottleneck dim
+  epochs: 100
+  batch_size: 128
+  learning_rate: 0.0002
+  overwrite: false
+
+# --- PCA Preprocessor (alternative to autoencoder, currently unused) ---
+pca:
+  target_dim: 64
+  remove_top_pc: 3
+
+# --- GMM ---
+gmm:
+  n_components: null                # null = auto (sqrt(N) heuristic)
+  n_iters: 300
+  covariance_type: "diag"
+  reg_covar: 1.0e-5
+  weight_concentration_prior: null  # null = sklearn default
+  tol: 1.0e-3
+  random_state: 42
+  prune_weight_threshold: 0.01
+  prune_min_components: 2
+  # --- Trainable GMM mode ---
+  trainable: true                   # true = nn.Parameter (fine-tuned during training)
+                                    # false = frozen (registered buffers, no gradient)
+  gmm_lr_scale: 0.1                # GMM params LR = base_lr * gmm_lr_scale (only if trainable)
+
+# --- Optimal Transport ---
+transport:
+  return_squared: false             # W2 (false) or W2² (true)
+
+# --- Training ---
+training:
+  num_epochs: 50
+  batch_size: 256
+  learning_rate: 0.0003
+  weight_decay: 1.0e-4
+  lambda_align: 0.1                 # OT alignment loss weight (0 = disable)
+  align_lr_scale: 0.1               # alignment optimizer LR scale
+  patience: 7                       # early stopping patience (cross-domain)
+  patience_ablation: 5              # early stopping patience (ablation)
+  huber_delta: 1.0
+
+# --- Evaluation ---
+eval:
+  batch_size: 256
+  topk: 10                          # for ranking metrics (HR@K, NDCG@K)

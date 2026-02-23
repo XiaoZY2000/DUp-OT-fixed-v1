@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+*.pyo
+stored/
+model/
+data/raw/*.gz
+data/raw/*.jsonl
+data/filtered/
+data/processed/
+*.egg-info/
+.eggs/
+dist/
+build/
