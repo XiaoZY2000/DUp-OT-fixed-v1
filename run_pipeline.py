@@ -21,6 +21,7 @@ from src.utils import get_device, ensure_dir, load_json, save_json, load_pickle,
 from src.data import filter_dataset, gen_data, time_split, flatten_nested, judge_domain_time_order
 from src.preprocess import process_data, train_autoencoder
 from src.model.gmm import fit_gmm_to_items
+from src.model.components import build_user_pos_items
 from src.transport import compute_cost_matrix, compute_transport_plan
 
 
@@ -61,25 +62,6 @@ def _time_decay(records, ref_time, cfg_td):
 
 def _to_interaction_list(records):
     return [(r['user_id'], r['item_id'], r['rating'], r['time']) for r in records]
-
-
-def _to_pn_pairs(records):
-    user_map = defaultdict(list)
-    for r in records:
-        user_map[r['user_id']].append(r)
-    pairs = []
-    for uid, recs in user_map.items():
-        by_rating = defaultdict(list)
-        for r in recs:
-            by_rating[r['rating']].append(r)
-        ratings = sorted(by_rating.keys(), reverse=True)
-        for i in range(len(ratings)):
-            for j in range(i + 1, len(ratings)):
-                for pos in by_rating[ratings[i]]:
-                    for neg in by_rating[ratings[j]]:
-                        pairs.append((uid, pos['item_id'], neg['item_id'],
-                                      pos['time'], neg['time']))
-    return pairs
 
 
 def main():
@@ -259,15 +241,15 @@ def main():
     save_json({"source_ref": ref_src, "target_ref": ref_tgt},
               f"{paths['stored']}/reference_times.json")
 
-    if mode == "ranking":
-        src_inter = _to_pn_pairs(src_flat)
-        tgt_inter = _to_pn_pairs(tgt_flat)
-        val_inter = _to_pn_pairs(val_flat)
-    else:
-        src_inter = _to_interaction_list(src_flat)
-        tgt_inter = _to_interaction_list(tgt_flat)
-        val_inter = _to_interaction_list(val_flat)
-    test_inter = _to_interaction_list(test_flat)  # always rating format for eval
+    # For both rating and ranking modes, use standard interaction lists.
+    # BPR negative sampling is now handled dynamically inside BPRDataset.
+    src_inter = _to_interaction_list(src_flat)
+    tgt_inter = _to_interaction_list(tgt_flat)
+    val_inter = _to_interaction_list(val_flat)
+    test_inter = _to_interaction_list(test_flat)
+
+    # Build train user-positive-items for evaluation masking (target domain)
+    tgt_train_user_pos = build_user_pos_items(tgt_inter)
 
     cfg_train = cfg["training"]
 
@@ -331,7 +313,8 @@ def main():
             from src.eval.metrics import eval_bpr_model
             eval_bpr_model(src_states, tgt_states, u_src_r, u_tgt_r, i_tgt_r,
                            gmm_src, gmm_tgt, T, test_inter, pair_name,
-                           cfg_gmm, seeds, device, topk)
+                           cfg_gmm, seeds, device, topk,
+                           train_user_pos=tgt_train_user_pos)
 
     # ================================================================
     # Stage: train_ablation (target-only)
@@ -382,7 +365,8 @@ def main():
         else:
             from src.eval.metrics import eval_bpr_tgtonly
             eval_bpr_tgtonly(tgt_only_states, u_tgt_r, i_tgt_r, gmm_tgt,
-                             test_inter, pair_name, cfg_gmm, seeds, device, topk)
+                             test_inter, pair_name, cfg_gmm, seeds, device, topk,
+                             train_user_pos=tgt_train_user_pos)
 
     print("\n" + "=" * 60)
     print("Pipeline complete.")

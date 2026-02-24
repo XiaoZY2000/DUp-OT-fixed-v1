@@ -141,10 +141,22 @@ def _build_item_matrix(all_items, item_dict, device):
     return ids, torch.stack(embs, dim=0)
 
 
+def _build_item_id_to_index(item_ids):
+    """Build {item_id: index} mapping for fast masking."""
+    return {iid: idx for idx, iid in enumerate(item_ids)}
+
+
 def eval_bpr_model(src_states, tgt_states, u_emb_src, u_emb_tgt, i_emb_tgt,
                    gmm_src, gmm_tgt, T, test_interactions, pair_name,
-                   cfg_gmm, seeds, device, topk=10):
-    """Evaluate cross-domain BPR over multiple seeds."""
+                   cfg_gmm, seeds, device, topk=10, train_user_pos=None):
+    """Evaluate cross-domain BPR over multiple seeds.
+
+    Parameters
+    ----------
+    train_user_pos : dict or None
+        {user_id: set(item_ids)} of training positives to mask during ranking.
+        If None, no masking is applied (backward compatible).
+    """
     trainable = cfg_gmm.get("trainable", True)
     test_data, all_items = _build_test_data(test_interactions)
     d_s = list(u_emb_src.values())[0].shape[0]
@@ -153,6 +165,9 @@ def eval_bpr_model(src_states, tgt_states, u_emb_src, u_emb_tgt, i_emb_tgt,
     item_ids, item_embs = _build_item_matrix(all_items, i_emb_tgt, device)
     num_items = item_embs.size(0)
     T_dev = (torch.tensor(T, dtype=torch.float32) if not torch.is_tensor(T) else T).to(device)
+
+    # Build item_id → index mapping for masking
+    item_id2idx = _build_item_id_to_index(item_ids)
 
     # Precompute scales
     u_tgt_np = {k: np.asarray(v, dtype=np.float32) for k, v in u_emb_tgt.items()}
@@ -197,6 +212,12 @@ def eval_bpr_model(src_states, tgt_states, u_emb_src, u_emb_tgt, i_emb_tgt,
                 t_rep = torch.full((num_items, 1), pos_t, device=device)
                 ratings = mt.rating_predictor(scores, t_rep)
 
+                # Mask training positives: set their scores to -inf
+                if train_user_pos is not None and u in train_user_pos:
+                    for train_item in train_user_pos[u]:
+                        if train_item in item_id2idx:
+                            ratings[item_id2idx[train_item]] = float('-inf')
+
                 k = min(topk, num_items)
                 _, indices = torch.topk(ratings, k=k)
                 recs = [item_ids[j] for j in indices.cpu().numpy().tolist()]
@@ -220,13 +241,24 @@ def eval_bpr_model(src_states, tgt_states, u_emb_src, u_emb_tgt, i_emb_tgt,
 
 
 def eval_bpr_tgtonly(tgt_states, u_emb_tgt, i_emb_tgt, gmm_tgt,
-                     test_interactions, pair_name, cfg_gmm, seeds, device, topk=10):
-    """Evaluate target-only BPR over multiple seeds."""
+                     test_interactions, pair_name, cfg_gmm, seeds, device,
+                     topk=10, train_user_pos=None):
+    """Evaluate target-only BPR over multiple seeds.
+
+    Parameters
+    ----------
+    train_user_pos : dict or None
+        {user_id: set(item_ids)} of training positives to mask during ranking.
+        If None, no masking is applied (backward compatible).
+    """
     trainable = cfg_gmm.get("trainable", True)
     test_data, all_items = _build_test_data(test_interactions)
     d_t = list(u_emb_tgt.values())[0].shape[0]
     item_ids, item_embs = _build_item_matrix(all_items, i_emb_tgt, device)
     num_items = item_embs.size(0)
+
+    # Build item_id → index mapping for masking
+    item_id2idx = _build_item_id_to_index(item_ids)
 
     u_tgt_np = {k: np.asarray(v, dtype=np.float32) for k, v in u_emb_tgt.items()}
     sc_tgt = estimate_scale(np.stack(list(u_tgt_np.values()), axis=0) if u_tgt_np else np.zeros((0, 32)))
@@ -251,6 +283,12 @@ def eval_bpr_tgtonly(tgt_states, u_emb_tgt, i_emb_tgt, gmm_tgt,
                 scores = compute_weighted_neg_mahalanobis(mt.gmm, w.repeat(num_items, 1), item_embs)
                 t_rep = torch.full((num_items, 1), pos_t, device=device)
                 ratings = mt.rating_predictor(scores, t_rep)
+
+                # Mask training positives: set their scores to -inf
+                if train_user_pos is not None and u in train_user_pos:
+                    for train_item in train_user_pos[u]:
+                        if train_item in item_id2idx:
+                            ratings[item_id2idx[train_item]] = float('-inf')
 
                 k = min(topk, num_items)
                 _, indices = torch.topk(ratings, k=k)
