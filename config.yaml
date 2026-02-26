@@ -11,27 +11,27 @@ mode: "rating"                    # "rating" | "ranking"
 
 # --- Dataset paths ---
 dataset_root: "data"
-source_domain: "CDs_and_Vinyl"
-target_domain: "Kindle_Store"
+source_domain: "Digital_Music"
+target_domain: "Electronics"
 
 # --- Data filtering (k-core) ---
 filter:
-  user_col: "user_id"
-  item_col: "parent_asin"
-  rating_col: "rating"
-  review_col: "text"
-  time_col: "timestamp"
+  user_col: "reviewerID"
+  item_col: "asin"
+  rating_col: "overall"
+  review_col: "reviewText"
+  time_col: "unixReviewTime"
   k_user: 5
   k_item: 5
   n_rows: null                    # null = read all; int = quick test
 
 # --- Raw → interaction JSON ---
 gen_data:
-  user_col: "user_id"
-  item_col: "parent_asin"
-  rating_col: "rating"
-  review_col: "text"
-  time_col: "timestamp"
+  user_col: "reviewerID"
+  item_col: "asin"
+  rating_col: "overall"
+  review_col: "reviewText"
+  time_col: "unixReviewTime"
 
 # --- Time split ---
 split:
@@ -78,9 +78,9 @@ gmm:
   tol: 1.0e-3
   random_state: 42
   prune_weight_threshold: 0.01
-  prune_min_components: 2
+  prune_min_components: 26
   # --- Trainable GMM mode ---
-  trainable: true                   # true = nn.Parameter (fine-tuned during training)
+  trainable: false                   # true = nn.Parameter (fine-tuned during training)
                                     # false = frozen (registered buffers, no gradient)
   gmm_lr_scale: 0.1                # GMM params LR = base_lr * gmm_lr_scale (only if trainable)
 
@@ -90,13 +90,14 @@ transport:
 
 # --- Training ---
 training:
+  loss_type: "mse"
   num_epochs: 50
-  batch_size: 256
+  batch_size: 512
   learning_rate: 0.0003
   weight_decay: 1.0e-4
-  lambda_align: 0.1                 # OT alignment loss weight (0 = disable)
+  lambda_align: 0.0                 # OT alignment loss weight (0 = disable)
   align_lr_scale: 0.1               # alignment optimizer LR scale
-  patience: 7                       # early stopping patience (cross-domain)
+  patience: 5                       # early stopping patience (cross-domain)
   patience_ablation: 5              # early stopping patience (ablation)
   huber_delta: 1.0
 

@@ -1,4 +1,4 @@
-name: dup-ot
+name: dup-ot-v1
 channels:
   - conda-forge
   - pytorch

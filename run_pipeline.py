@@ -37,10 +37,10 @@ def _resolve_paths(cfg):
     src, tgt = cfg["source_domain"], cfg["target_domain"]
     pair = f"{src}_{tgt}"
     return {
-        "src_raw": f"{root}/raw/{src}.jsonl.gz",
-        "tgt_raw": f"{root}/raw/{tgt}.jsonl.gz",
-        "src_filtered": f"{root}/filtered/{src}_filtered.jsonl",
-        "tgt_filtered": f"{root}/filtered/{tgt}_filtered.jsonl",
+        "src_raw": f"{root}/raw/{src}.json.gz",
+        "tgt_raw": f"{root}/raw/{tgt}.json.gz",
+        "src_filtered": f"{root}/filtered/{src}_filtered.json",
+        "tgt_filtered": f"{root}/filtered/{tgt}_filtered.json",
         "src_interactions": f"{root}/processed/{src}_interactions.json",
         "tgt_interactions": f"{root}/processed/{tgt}_interactions.json",
         "pair_name": pair,
@@ -67,12 +67,26 @@ def _to_interaction_list(records):
 def main():
     parser = argparse.ArgumentParser(description="DUP-OT Pipeline")
     parser.add_argument('--config', type=str, default='config.yaml')
+    parser.add_argument(
+    '--dataset_pair',
+    type=str,
+    default=None,
+    help='Override dataset pair in config, format: source,target (e.g., Books,Electronics)'
+)
     parser.add_argument('--stages', type=str, default='all',
                         help='Comma-separated stages or "all"')
     args = parser.parse_args()
 
     with open(args.config, 'r') as f:
         cfg = yaml.safe_load(f)
+
+    if args.dataset_pair is not None:
+        source_domain, target_domain = args.dataset_pair.split(',')
+        source_domain = source_domain.strip()
+        target_domain = target_domain.strip()
+
+        cfg['source_domain'] = source_domain
+        cfg['target_domain'] = target_domain
 
     stages = ALL_STAGES if args.stages == "all" else [s.strip() for s in args.stages.split(",")]
     device = get_device(cfg.get("device", "auto"))
