@@ -215,6 +215,7 @@ def train_bpr_model(src_inter, tgt_inter, val_inter,
 def _train_bpr_tgtonly_one(model, tgt_ds, val_ds, cfg_train, cfg_gmm, device):
     bs = cfg_train["batch_size"]
     lr = cfg_train["learning_rate"]
+    num_epochs = cfg_train["num_epochs"]
     patience = cfg_train.get("patience_ablation", 5)
     bpr = BPRLoss().to(device)
     opt = _make_optimizer(model, lr, cfg_gmm.get("gmm_lr_scale", 0.1),
@@ -224,7 +225,7 @@ def _train_bpr_tgtonly_one(model, tgt_ds, val_ds, cfg_train, cfg_gmm, device):
     val_loader = DataLoader(val_ds, batch_size=bs, shuffle=False, num_workers=0, pin_memory=True)
 
     best_val, es, best_state = float('inf'), 0, copy.deepcopy(model.state_dict())
-    for epoch in range(cfg_train["num_epochs"]):
+    for epoch in range(num_epochs):
         model.train(); tl = 0.0
         for batch in loader:
             u, pi, ni, pt, nt = to_device(batch, device)
@@ -245,6 +246,7 @@ def _train_bpr_tgtonly_one(model, tgt_ds, val_ds, cfg_train, cfg_gmm, device):
                 np_ = model.rating_predictor(ns, b["neg_time"].unsqueeze(-1))
                 vl += bpr(pp, np_).item()
         cv = vl / len(val_loader)
+        print(f"  Epoch [{epoch+1}/{num_epochs}] Val BPR: {cv:.4f}")
         if cv < best_val:
             best_val = cv; best_state = copy.deepcopy(model.state_dict()); es = 0
         else:

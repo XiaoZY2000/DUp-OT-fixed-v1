@@ -75,6 +75,7 @@ def main():
 )
     parser.add_argument('--stages', type=str, default='all',
                         help='Comma-separated stages or "all"')
+    parser.add_argument('--mode', type=str, default='rating', help='rating | ranking')
     args = parser.parse_args()
 
     with open(args.config, 'r') as f:
@@ -89,6 +90,10 @@ def main():
         cfg['target_domain'] = target_domain
 
     stages = ALL_STAGES if args.stages == "all" else [s.strip() for s in args.stages.split(",")]
+    
+    if args.mode is not None:
+        cfg['mode'] = args.mode
+    
     device = get_device(cfg.get("device", "auto"))
     paths = _resolve_paths(cfg)
     pair_name = paths["pair_name"]
