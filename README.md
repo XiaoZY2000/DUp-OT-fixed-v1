@@ -9,15 +9,15 @@ conda activate dup-ot
 ```
 
 ### 2. Prepare Data
-Place raw Amazon review JSONL files in `data/raw/`:
+Place raw Amazon review JSON files in `data/raw/`:
 ```
-data/raw/CDs_and_Vinyl.jsonl.gz
-data/raw/Kindle_Store.jsonl.gz
+data/raw/Digital_Music.json.gz
+data/raw/Electronics.json.gz
 ```
 
 ### 3. Run Full Pipeline
 ```bash
-python run_pipeline.py --config config.yaml --stages all
+python run_pipeline.py --config config.yaml --dataset_pair Digital_Music,Electronics --stages all --mode rating
 ```
 
 ### 4. Run Specific Stages
