@@ -1,4 +1,10 @@
-# DUP-OT: Distributional User Preference Modeling with Optimal Transport for Non-Overlapping Cross-Domain Recommendation (PAKDD DSFA 2026)
+# DUP-OT
+
+Official implementation of **DUP-OT**, accepted at the **PAKDD 2026 DSFA Special Session**.
+
+DUP-OT is a distribution-based framework for non-overlapping cross-domain recommendation,
+which models user preferences as Gaussian mixture distributions and aligns domains
+via Optimal Transport.
 
 ## Quick Start
 
