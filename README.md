@@ -1,4 +1,4 @@
-# DUP-OT: Cross-Domain Recommendation via Distribution-level User Preference Optimal Transport
+# DUP-OT: Distributional User Preference Modeling with Optimal Transport for Non-Overlapping Cross-Domain Recommendation (PAKDD DSFA 2026)
 
 ## Quick Start
 
