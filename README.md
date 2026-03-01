@@ -1,5 +1,7 @@
 # DUP-OT
 
+[![arXiv](https://img.shields.io/badge/arXiv-2508.16210-b31b1b.svg)](https://arxiv.org/abs/2508.16210)
+
 Official implementation of **DUP-OT**, accepted at the **PAKDD 2026 DSFA Special Session**.
 
 DUP-OT is a distribution-based framework for non-overlapping cross-domain recommendation,
